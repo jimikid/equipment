@@ -1,14 +1,12 @@
-
 """
 Created on 02/24/2016  @author: sbaek
     V00
     - initial release
 """
-
 import visa
 from collections import OrderedDict 
 
-class equip:
+class Equip:
     """
            __INIT__     
            __STR__      
@@ -17,20 +15,20 @@ class equip:
     
     def __init__(self):              
         self.return_str= '' 
-        self.item=OrderedDict()
+        #self.item=OrderedDict()
+        self.item={}
         
     def __str__(self):
         self.return_str= ''
         return self.return_str      
-    
+
     def get_equip(self):
         rm = visa.ResourceManager()
         list_equip=rm.list_resources()
- 
-        
-        for item in list_equip: 
-            print item
-            if 'GPIB' in item:   #check equipment by gpib                                
+        #print list_equip
+        for item in list_equip:
+
+            if 'GPIB' in item:   #check equipment by gpib
                 eq=rm.open_resource(item)
                 eq.write('*IDN?')   
                 c=eq.read()
@@ -62,26 +60,27 @@ class equip:
                     print item+' ->  set '+cata
                     self.item.update({cata:eq})
                     self.item[cata].write('*IDN?')   
-                    print self.item[cata].read()   
-
+                    print self.item[cata].read()
         
                 if 'UPC-32E' in c:
                     cata='AC_SOURCE'
                     print item+' ->  set '+cata
                     self.item.update({cata:eq})
                     self.item[cata].write('*IDN?')   
-                    print self.item[cata].read()   
-                    
-                if 'ASRL5' in c:
-                    cata='serial_com'
-                    print item+' ->  set '+cata
-                    self.item.update({cata:eq})
-                    self.item[cata].write('*IDN?')   
-                    print self.item[cata].read() 
-                    
-           
+                    print self.item[cata].read()
+
+            if 'ASRL5' in item:
+                eq=rm.open_resource(item)
+                cata='SERIAL'
+                print item+' ->  set '+cata
+                print '\n'
+                self.item.update({cata:eq})
+
+
         return self.item
                 
                
-               
-               
+
+if __name__ == '__main__':
+    a=Equip()
+    b=a.get_equip()
