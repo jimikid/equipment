@@ -5,58 +5,64 @@ Created on 02/26/2016, @author: sbaek
   - initial release   
 """
 
+import sys, time
+from os.path import abspath, dirname
+#sys.path.append(dirname(dirname(__file__)))
+sys.path.append((dirname(__file__)))
+#sys.path.append('%s/equipment' % (dirname(dirname(__file__))))
+import power_meter as pm
+
 def sas_fixed(equip, CURR=0, VOLT=0):
     channel_list='(@1)'  
     equip['SAS'].write('SOURCE:CURR:MODE FIX,%s' % channel_list)
     equip['SAS'].write('SOURCE:CURR %s, %s' % (CURR, channel_list))
     equip['SAS'].write('SOURCE:VOLT %s, %s' % (VOLT, channel_list))
     equip['SAS'].write('OUTPUT ON')
-    
+
+
+def sas_fixed_adj(equip, CURR=0, VOLT=0):
+    #0.1V each step, max 0.5V times 
+    step=0.05
+    VOLT_set=VOLT
+    for i in range(10):
+        item=pm.pm_measure(equip)
+        if abs(float(item['volt_in'])-float(VOLT)) <0.1:
+            break
+        elif float(item['volt_in'])<float(VOLT_set):   
+            VOLT_set=VOLT_set+step
+            sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
+            time.sleep(1.5)
+        elif float(item['volt_in'])>float(VOLT_set):
+            VOLT_set=VOLT_set-step
+            sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)            
+            time.sleep(1.5)
+
  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
-        
-def sas_up(self, SAS_volt, SAS_amp):
-    print '\n initizlize SAS ... at %.0fVdc' %(SAS_volt)  
-    self.eq['SAS'].select_fixed(SAS_volt, SAS_amp)
-    ## check boot-up 
+            
+def pcu_boot(equip, CURR=0, VOLT=0, ADJ='Off'):
+    print '\n initizlize SAS at %.0fV and %.0fA' %(VOLT, CURR)
+    if ADJ=='On':
+        sas_fixed_adj(equip, CURR, VOLT)
+    else:sas_fixed(equip, CURR, VOLT)
+    
+    ## check boot-up
     for i in range(60):
         time.sleep(1.0)
-        meas_pm = self.eq['POWER_METER'].measurement(integrate=0.0)
-        if (meas_pm.dc_watts_1>80.0):
-            time.sleep(5.0)
-            m1=mm.measurement(self.par, self.eq)     
-            data=m1.measure_DC2AC()
-            print data['volt_in']
+        item=pm.pm_measure(equip)
+        item.update({'scan_time':time.strftime('%H:%M:%S')})
+
+        if (item['p_ac_out']>80.0):
+            time.sleep(4.0)
             flag='up'
-            break      
-        else:flag='down'        
-    if flag=='down':        
-        print '\n failed to boot up, flag down'
-        self.shutdown()
+            break
+        else:flag='down'
+    if flag=='down':
+        print '\n failed to boot up'
     return flag
 
+
 def sas_soft_up(self, SAS_volt, SAS_amp):
-    print '\n soft bootup'
+    print '\n soft boot up'
     print '\n initizlize SAS ... at %.0fVdc' %(SAS_volt)  
     self.eq['SAS'].select_fixed(SAS_volt, SAS_amp)
     time.sleep(5.0)
