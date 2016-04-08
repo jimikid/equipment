@@ -4,13 +4,17 @@ Created on 02/26/2016, @author: sbaek
   V00
   - initial release   
 """
-
+#
 import sys, time
 from os.path import abspath, dirname
-#sys.path.append(dirname(dirname(__file__)))
-sys.path.append((dirname(__file__)))
-#sys.path.append('%s/equipment' % (dirname(dirname(__file__))))
-import power_meter as pm
+sys.path.append(dirname(dirname(dirname(__file__))))
+sys.path.append('%s/data_aq_lib' % (dirname(dirname(dirname(__file__)))))
+
+import data_aq_lib.equipment.power_meter as pm
+import data_aq_lib.equipment.dvm as dvm
+from data_aq_lib.measurement import serial_commands as sc
+import data_aq_lib.equipment.ac_source as ac
+
 
 def sas_fixed(equip, CURR=0, VOLT=0):
     channel_list='(@1)'  
@@ -20,162 +24,43 @@ def sas_fixed(equip, CURR=0, VOLT=0):
     equip['SAS'].write('OUTPUT ON')
 
 
-def sas_fixed_adj(equip, CURR=0, VOLT=0):
-    #0.1V each step, max 0.5V times 
-    step=0.05
+def sas_fixed_adj(equip, CURR=0, VOLT=0):  
     VOLT_set=VOLT
-    for i in range(10):
-        item=pm.pm_measure(equip)
-        if abs(float(item['volt_in'])-float(VOLT)) <0.1:
-            break
-        elif float(item['volt_in'])<float(VOLT_set):   
-            VOLT_set=VOLT_set+step
-            sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
-            time.sleep(1.5)
-        elif float(item['volt_in'])>float(VOLT_set):
-            VOLT_set=VOLT_set-step
-            sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)            
-            time.sleep(1.5)
-
+    time.sleep(2.0)
+    item=pm.pm_measure(equip)
+    step= float(VOLT)-float(item['volt_in'])
+    VOLT_set=VOLT_set+step
+    sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
  
             
-def pcu_boot(equip, CURR=0, VOLT=0, ADJ='Off'):
+def sas_pcu_boot(equip, CURR=0, VOLT=0):
+    ''' turn on SAS and wait until PCU produce power '''
     print '\n initizlize SAS at %.0fV and %.0fA' %(VOLT, CURR)
-    if ADJ=='On':
-        sas_fixed_adj(equip, CURR, VOLT)
-    else:sas_fixed(equip, CURR, VOLT)
+    item={}
+    
+    sas_fixed(equip, CURR, VOLT)
+    item=pm.pm_measure(equip)
     
     ## check boot-up
     for i in range(60):
         time.sleep(1.0)
-        item=pm.pm_measure(equip)
-        item.update({'scan_time':time.strftime('%H:%M:%S')})
-
-        if (item['p_ac_out']>80.0):
-            time.sleep(4.0)
-            flag='up'
-            break
-        else:flag='down'
-    if flag=='down':
-        print '\n failed to boot up'
-    return flag
-
-
-def sas_soft_up(self, SAS_volt, SAS_amp):
-    print '\n soft boot up'
-    print '\n initizlize SAS ... at %.0fVdc' %(SAS_volt)  
-    self.eq['SAS'].select_fixed(SAS_volt, SAS_amp)
-    time.sleep(5.0)
+        if (item['p_ac_out']>100.0):
+            temp=dvm.measure_tempc(equip)
+            item.update({'Temp':temp})
+            timestr=time.strftime("%I:%M:%S")
+            datestr=time.strftime(" %m/%d/%Y")
+            item.update({'scan_time':timestr, 'scan_date':datestr})
+            item.update(pm.pm_measure(equip))  
+            break    
+        else:
+            item=pm.pm_measure(equip)
+            print ' . '
+    return item
+   
     
-    flag='down'
-    while (flag=='down'):                
-        try:
-            time.sleep(5.0)
-            #print flag
-            self.pcu.debugger_cmd('pt 2\r')  
-            time.sleep(5.0)                
-            print '\n command p 40\r' 
-            self.pcu.debugger_cmd('p 40\r')      
-            flag='up'
-            #print flag                
-        except : pass
-    
-    time.sleep(2.0)
-    self.eq['init'].ac_source_up(mode=self.par['ac_mode'], freq=60.0)
-
-    flag='down'
-     ## check boot-up 
-    for i in range(60):
-        time.sleep(1.0)
-        meas_pm = self.eq['POWER_METER'].measurement(integrate=0.0)
-        if (meas_pm.dc_watts_1>30.0):
-            time.sleep(5.0)
-            m1=mm.measurement(self.par, self.eq)     
-            data=m1.measure_DC2AC()
-            print data['volt_in']
-            flag='up'
-            break      
-        else:flag='down'        
-    if flag=='down':        
-        print '\n failed to boot up, flag down'
-        self.shutdown()
-    return flag
-    
-    
-    
-def sas_down(self):
+def sas_off(equip):
     time.sleep(2)
-    print ' SAS off...'
-    self.eq['SAS'].off()    
-
-def ac_source_up(self, mode='LL', freq=60.0):     
-    if mode=='LN':
-        print '\n AC_SOURCE On.. mode: LN 120, 120, 120, 3-phase'        
-        self.eq['AC_SOURCE'].configure_voltage(prog_num=98,
-                                         frequency=60,
-                                         current_limit=10.0,
-                                         line_voltages=(120.0, 120.0, 120.0))
-        self.eq['AC_SOURCE'].exec_program(98)
-        self.eq['AC_SOURCE'].on()
-        time.sleep(2)          
-
-    else :
-        print '\n AC_SOURCE On.. mode: LL 120, 120, split-phase' 
-        self.eq['AC_SOURCE'].configure_voltage(prog_num=99,
-                                         frequency=freq,
-                                         current_limit=10.0,
-                                         line_voltages=(120.0, 120.0))
-                                        
-        self.eq['AC_SOURCE'].exec_program(99)
-        self.eq['AC_SOURCE'].on()
-        time.sleep(2)             
-    """Programs a voltage profile into memory on the instrument.
-  
-    INPUTS
-    'prog_num'  Integer. The program number to store. The 3XX series can
-                store programs at memory locations 1 through 99.
-    'line_voltages'  Tupple. The line to line voltages.
-    'frequency'  Float. The frequency to use. Range is 20 to 5000 Htry:self.pcu.close()  
-    except:passz.
-    'current_limit'  Float. The current limit. Range is 1 to 20 A.
-    
-            
-    INPUT
-    'prog_num'  Integer. The program number to execute. The 3XX series can
-                execute programs at memory locations 1 through 99.
-                
-    """    
-  
-       
-def ac_source_down(self):
-    time.sleep(5)
-    print ' AC_SOURCE off...'
-    self.eq['AC_SOURCE'].off()   
-
-def power_meter_up(self):        
-    para=dict()        
-    para['volt_range_ac'], para['current_range_ac']=150, 5
-    para['volt_range_dc'], para['current_range_dc']=60, 10
-
-    self.eq['POWER_METER'].init(ac_voltage=(120,120),
-                     num_channels=3,
-                     mode='Efficiency',
-                     degauss=False,
-                     use_500_hz_ac_filter=False)
-                     
-    self.eq['POWER_METER'].ac_range(max_voltage=para['volt_range_ac'], max_current=para['current_range_ac'])
-    self.eq['POWER_METER'].dc_range(max_voltage=para['volt_range_dc'], max_current=para['current_range_dc']) 
-    self.eq['POWER_METER'].set_update_rate(250)
-    self.eq['POWER_METER'].ac_line_filter('off')
-    self.eq['POWER_METER'].averaging('off')           
-
-
-def shutdown(self):
-    print '\n ** shutdown **'       
-    try:self.pcu.close()  
-    except:pass
-    self.sas_down()
-    self.ac_source_down()
-
-
+    print '\n SAS off...'
+    equip['SAS'].write('OUTP:STAT OFF')  
+   
 

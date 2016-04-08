@@ -4,6 +4,12 @@ Created on Fri Feb 19 16:24:10 2016, @author: sbaek
     V00
     - initial release
     - '.serial' is a object 'rm.open_resource('ASRL5', timeout=12, baud_rate=115200)'
+ 
+  V01 04/06/2016
+    - run this script to close serial com when it was abnormaly terminated.
+      if __name__ == '__main__':
+        a=SerialCom()
+        a.serial.close()  
 """
 
 import visa
@@ -33,13 +39,15 @@ class SerialCom:
 
     def get_prompt(self, delay=0.2):
         while True:
-            self.serial.write('\r')
-            data = self.serial.read()
-            if '>' in data:
-                #print '\n'
-                #print data
-                break
-            time.sleep(delay)
+            try:                    
+                self.serial.write('\r')
+                data = self.serial.read()
+                if '>' in data:
+                    #print '\n'
+                    #print data
+                    break
+                time.sleep(delay)
+            except:pass
 
     def write(self, cmd, delay=4):
         print '\nd> %s' % cmd
@@ -66,23 +74,25 @@ class SerialCom:
 if __name__ == '__main__':
 
     a=SerialCom()
-    a.write(cmd='rl f636 1\r')
-    a.read()
-
-    a.write(cmd='wl f636 60\r')
-    a.write(cmd='rl f636 1\r')
-    a.read()
-
-    lap=5
-
-    a.write(cmd='pt 2\r')
-
-    #time.sleep(lap)
-    a.write(cmd='p 90\r')
-
-    #time.sleep(lap)
-    a.write(cmd='p 30\r')
-
-    #time.sleep(lap)
-    a.write(cmd='p 70\r')
-    a.serial.close()
+    a.serial.close()  
+    
+#    a.write(cmd='rl f636 1\r')
+#    a.read()
+#
+#    a.write(cmd='wl f636 60\r')
+#    a.write(cmd='rl f636 1\r')
+#    a.read()
+#
+#    lap=5
+#
+#    a.write(cmd='pt 2\r')
+#
+#    #time.sleep(lap)
+#    a.write(cmd='p 90\r')
+#
+#    #time.sleep(lap)
+#    a.write(cmd='p 30\r')
+#
+#    #time.sleep(lap)
+#    a.write(cmd='p 70\r')
+#    a.serial.close()

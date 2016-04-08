@@ -6,6 +6,9 @@ Created on 02/36/2016, @author: sbaek
 
   V01, 03/09/2016
   - values in item has been changed after calibration and CEC efficienci scripts
+ 
+  V02 04/06/2016
+  - Errors occur when no power transfer due to '0' value.
 """
 
 def pm_measure(equip):
@@ -23,13 +26,22 @@ def pm_measure(equip):
           'volt_ac_out1':float(results2[12]),'volt_ac_out2':float(results2[13]),
           'eff':100*float(results2[11])/float(results2[2])}
     '''
-    item={'p_in':float(results2[2]),'p_ac_out':float(results2[13]),
-          'volt_in':float(results2[0]),'amp_in':float(results2[1]),
-          'amp_ac_out1':float(results2[14]),'amp_ac_out2':float(results2[15]),
-          'volt_ac_out1':float(results2[16]),'volt_ac_out2':float(results2[17]),
-          'eff':100*float(results2[13])/float(results2[2])}
+    #print results2[13], float(results2[2])
+    try:            
+        item={'p_in':float(results2[2]),'p_ac_out':float(results2[13]),
+              'volt_in':float(results2[0]),'amp_in':float(results2[1]),
+              'amp_ac_out1':float(results2[14]),'amp_ac_out2':float(results2[15]),
+              'volt_ac_out1':float(results2[16]),'volt_ac_out2':float(results2[17]),
+              'eff':100*float(results2[13])/float(results2[2])}
+    except:
+        item={'p_in':float(results2[2]),'p_ac_out':float(results2[13]),
+              'volt_in':float(results2[0]),'amp_in':float(results2[1]),
+              'amp_ac_out1':float(results2[14]),'amp_ac_out2':float(results2[15]),
+              'volt_ac_out1':float(results2[16]),'volt_ac_out2':float(results2[17]),
+              'eff': 0}  # /0 cuases error when there is no power.
+        
 
-    return item
+    return item #dict
 
 
 

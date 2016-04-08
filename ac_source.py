@@ -3,7 +3,9 @@
 Created on 02/26/2016, @author: sbaek
   V00
   - initial release
-    
+
+  V01 04/06/2016
+  - ac_on(equip), ac_off(equip) are added  
 """
 
 import time
@@ -98,6 +100,12 @@ def _configure_voltage(frequency, current_limit, line_voltages, xfmr_mode=False)
 
     return template % locals()        
   
+def ac_on(equip):  
+    equip['AC_SOURCE'].write("OUTPUT ON")
+
+def ac_off(equip):
+    print '\n AC_SOURCE off'
+    equip['AC_SOURCE'].write("OUTPUT OFF")
 
 
 
