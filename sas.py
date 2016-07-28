@@ -24,40 +24,68 @@ def sas_fixed(equip, CURR=0, VOLT=0):
     equip['SAS'].write('OUTPUT ON')
 
 
-def sas_fixed_adj(equip, CURR=0, VOLT=0):  
+def sas_fixed_adj(equip, CURR=0, VOLT=0):
+    print ' adjust SAS at %.1f' %float(VOLT)
     VOLT_set=VOLT
-    time.sleep(2.0)
+    sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
+    time.sleep(3)
     item=pm.pm_measure(equip)
     step= float(VOLT)-float(item['volt_in'])
+    #print step, float(VOLT), float(item['volt_in'])
     VOLT_set=VOLT_set+step
+    print ' set %.2f' %VOLT_set
     sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
  
             
-def sas_pcu_boot(equip, CURR=0, VOLT=0):
+def sas_pcu_boot(equip, para, CURR=0, VOLT=0, boot_up=1.0):
     ''' turn on SAS and wait until PCU produce power '''
-    print '\n initizlize SAS at %.0fV and %.0fA' %(VOLT, CURR)
+    msg='\n initizlize SAS at %.1fV and %.1fA' %(VOLT, CURR)
+    print msg
+    para['log'] +=msg
     item={}
     
     sas_fixed(equip, CURR, VOLT)
     item=pm.pm_measure(equip)
-    
-    ## check boot-up
-    for i in range(60):
-        time.sleep(1.0)
-        if (item['p_ac_out']>100.0):
-            temp=dvm.measure_tempc(equip)
-            item.update({'Temp':temp})
-            timestr=time.strftime("%I:%M:%S")
-            datestr=time.strftime(" %m/%d/%Y")
-            item.update({'scan_time':timestr, 'scan_date':datestr})
-            item.update(pm.pm_measure(equip))  
-            break    
-        else:
-            item=pm.pm_measure(equip)
-            print ' . '
+
+    if boot_up==1.0:
+        ## check boot-up
+        msg= ' boot up at a full load \n'
+        print msg
+        para['log'] +=msg
+        item=check_boot(equip, iteration=60)
+
+    else:
+        #boot up with pt 2 at the load condition given
+        check_boot(equip, iteration=10)
+        for i in range(3):
+            time.sleep(2)
+            sc.command_p(boot_up, para, equip, adj=False, delay=1, show=False) #taking data from pm takes time.
+            print ' boot up at %s' %boot_up
+            ## check boot-up
+            item=check_boot(equip, iteration=20)
+
+    sas_fixed_adj(equip, CURR, VOLT)
     return item
    
-    
+def check_boot(equip, iteration=60):
+    item=pm.pm_measure(equip)
+    for i in range(iteration):
+        time.sleep(1.0)
+        if (item['p_ac_out']>20.0):  #30% of the rated power
+            time.sleep(3)
+            print ' PCU is running ...'
+            temp=dvm.measure_tempc(equip)
+            item.update({'Temp':temp})
+            item.update({'scan_time':time.strftime("%I:%M:%S")})
+            item.update(pm.pm_measure(equip))
+            break
+        else:
+            item=pm.pm_measure(equip, show=False)  # need to check the list from pm
+            print ' . '
+    time.sleep(3)
+    return item
+
+
 def sas_off(equip):
     time.sleep(2)
     print '\n SAS off...'

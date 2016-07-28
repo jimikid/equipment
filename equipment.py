@@ -2,6 +2,10 @@
 Created on 02/24/2016  @author: sbaek
     V00
     - initial release
+    
+    V01 07/27/2016
+    - take serial port out. It is better to be open and close in serialcome.py
+
 """
 import visa
 from collections import OrderedDict 
@@ -27,7 +31,6 @@ class Equip:
         list_equip=rm.list_resources()
         #print list_equip
         for item in list_equip:
-
             if 'GPIB' in item:   #check equipment by gpib
                 eq=rm.open_resource(item)
                 eq.write('*IDN?')   
@@ -68,14 +71,14 @@ class Equip:
                     self.item.update({cata:eq})
                     self.item[cata].write('*IDN?')   
                     print self.item[cata].read()
-
+            '''
             if 'ASRL5' in item:
                 eq=rm.open_resource(item)
                 cata='SERIAL'
                 print item+' ->  set '+cata
                 print '\n'
                 self.item.update({cata:eq})
-
+            '''
 
         return self.item
                 
