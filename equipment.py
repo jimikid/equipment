@@ -2,7 +2,7 @@
 Created on 02/24/2016  @author: sbaek
     V00
     - initial release
-    
+
     V01 07/27/2016
     - take serial port out. It is better to be open and close in serialcome.py
 

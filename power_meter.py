@@ -36,7 +36,7 @@ def pm_measure(equip, show=False):
                 print '%s, %.1f' %(i,float(results2[i]))
     '''
 
-
+    #print results2
     item={'p_in':float(results2[2]),'p_ac_out':float(results2[15]),
           'volt_in':float(results2[0]),'amp_in':float(results2[1]),
           'amp_ac_out1':float(results2[18]),'amp_ac_out2':float(results2[19]),

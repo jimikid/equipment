@@ -22,9 +22,9 @@ def set_ac_source(equip, mode='LL', freq=60.0):
         equip['AC_SOURCE'].write("PROG:NAME %d" % 98)
         equip['AC_SOURCE'].write("PROG:EXEC")        
         equip['AC_SOURCE'].write("OUTPUT ON")
-        time.sleep(2)          
+        time.sleep(2)
 
-    else :
+    elif mode=='LL':
         print '\n AC_SOURCE On.. mode: LL 120, 120, split-phase' 
         configure_voltage(equip, prog_num=99,
                                          frequency=freq,
@@ -34,7 +34,20 @@ def set_ac_source(equip, mode='LL', freq=60.0):
         equip['AC_SOURCE'].write("PROG:NAME %d" % 99)
         equip['AC_SOURCE'].write("PROG:EXEC")        
         equip['AC_SOURCE'].write("OUTPUT ON")
-        time.sleep(2)          
+        time.sleep(2)
+
+    elif mode=='LL_HVRT':
+        print '\n AC_SOURCE On.. mode: LL 132, 132, split-phase'
+        configure_voltage(equip, prog_num=97,
+                                         frequency=freq,
+                                         current_limit=10.0,
+                                         line_voltages=(132.0, 132.0))
+
+        equip['AC_SOURCE'].write("PROG:NAME %d" % 97)
+        equip['AC_SOURCE'].write("PROG:EXEC")
+        equip['AC_SOURCE'].write("OUTPUT ON")
+        time.sleep(2)
+
 
 
 def configure_voltage(equip, prog_num, line_voltages, frequency, current_limit):

@@ -2,9 +2,13 @@
 """
 Created on 02/26/2016, @author: sbaek
   V00
-  - initial release   
+  - initial release
+
+  V02 08/9/2016
+  - if abs(step)<5.0, step could be abnormally high when pcu is not working properly.
+
 """
-#
+
 import sys, time
 from os.path import abspath, dirname
 sys.path.append(dirname(dirname(dirname(__file__))))
@@ -13,8 +17,6 @@ sys.path.append('%s/data_aq_lib' % (dirname(dirname(dirname(__file__)))))
 import data_aq_lib.equipment.power_meter as pm
 import data_aq_lib.equipment.dvm as dvm
 from data_aq_lib.measurement import serial_commands as sc
-import data_aq_lib.equipment.ac_source as ac
-
 
 def sas_fixed(equip, CURR=0, VOLT=0):
     channel_list='(@1)'  
@@ -24,7 +26,7 @@ def sas_fixed(equip, CURR=0, VOLT=0):
     equip['SAS'].write('OUTPUT ON')
 
 
-def sas_fixed_adj(equip, CURR=0, VOLT=0):
+def sas_fixed_adj(equip, CURR=0, VOLT=0, delay=0):
     print ' adjust SAS at %.1f' %float(VOLT)
     VOLT_set=VOLT
     sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
@@ -32,9 +34,14 @@ def sas_fixed_adj(equip, CURR=0, VOLT=0):
     item=pm.pm_measure(equip)
     step= float(VOLT)-float(item['volt_in'])
     #print step, float(VOLT), float(item['volt_in'])
-    VOLT_set=VOLT_set+step
-    print ' set %.2f' %VOLT_set
-    sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
+    if abs(step)<5.0:
+        VOLT_set=VOLT_set+step
+        print ' set %.2f' %VOLT_set
+        sas_fixed(equip, CURR=CURR, VOLT=VOLT_set)
+        time.sleep(delay)
+    else:
+        print ' check SAS..'
+        time.sleep(delay)
  
             
 def sas_pcu_boot(equip, para, CURR=0, VOLT=0, boot_up=1.0):
