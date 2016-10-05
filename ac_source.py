@@ -24,6 +24,18 @@ def set_ac_source(equip, mode='LL', freq=60.0):
         equip['AC_SOURCE'].write("OUTPUT ON")
         time.sleep(2)
 
+    elif mode=='LN_n10':
+        print '\n AC_SOURCE On.. mode: LN %s, %s, %s, 3-phase' %(120*0.9, 120*0.9, 120*0.9)
+        configure_voltage(equip, prog_num=98,
+                                         frequency=60,
+                                         current_limit=10.0,
+                                         line_voltages=(120*0.9, 120*0.9, 120*0.9))
+
+        equip['AC_SOURCE'].write("PROG:NAME %d" % 98)
+        equip['AC_SOURCE'].write("PROG:EXEC")
+        equip['AC_SOURCE'].write("OUTPUT ON")
+        time.sleep(2)
+
     elif mode=='LL':
         print '\n AC_SOURCE On.. mode: LL 120, 120, split-phase' 
         configure_voltage(equip, prog_num=99,
@@ -36,12 +48,24 @@ def set_ac_source(equip, mode='LL', freq=60.0):
         equip['AC_SOURCE'].write("OUTPUT ON")
         time.sleep(2)
 
-    elif mode=='LL_HVRT':
-        print '\n AC_SOURCE On.. mode: LL 132, 132, split-phase'
+    elif mode=='LL_p10':
+        print '\n AC_SOURCE On.. mode: LL %s, %s, split-phase' %(120*1.1, 120*1.1)
         configure_voltage(equip, prog_num=97,
                                          frequency=freq,
                                          current_limit=10.0,
-                                         line_voltages=(132.0, 132.0))
+                                         line_voltages=(120*1.1, 120*1.1))
+
+        equip['AC_SOURCE'].write("PROG:NAME %d" % 97)
+        equip['AC_SOURCE'].write("PROG:EXEC")
+        equip['AC_SOURCE'].write("OUTPUT ON")
+        time.sleep(2)
+
+    elif mode=='LL_p15':
+        print '\n AC_SOURCE On.. mode: LL %s, %s, split-phase' %(120*1.15, 120*1.15)
+        configure_voltage(equip, prog_num=97,
+                                         frequency=freq,
+                                         current_limit=10.0,
+                                         line_voltages=(120*1.15, 120*1.15))
 
         equip['AC_SOURCE'].write("PROG:NAME %d" % 97)
         equip['AC_SOURCE'].write("PROG:EXEC")
