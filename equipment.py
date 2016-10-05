@@ -41,13 +41,13 @@ class Equip:
                     self.item.update({cata:eq})
                     self.item[cata].write('*IDN?')   
                     print self.item[cata].read()   
-                
+
                 if 'DSO-X' in c:
                     cata='SCOPE'
                     print item+' ->  set '+cata
                     self.item.update({cata:eq})
                     self.item[cata].write('*IDN?')   
-                    print self.item[cata].read()   
+                    print self.item[cata].read()
 
                 
                 if 'YOKOGAWA' in c:
