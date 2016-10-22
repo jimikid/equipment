@@ -42,13 +42,6 @@ class Equip:
                     self.item[cata].write('*IDN?')   
                     print self.item[cata].read()   
 
-                if 'DSO-X' in c:
-                    cata='SCOPE'
-                    print item+' ->  set '+cata
-                    self.item.update({cata:eq})
-                    self.item[cata].write('*IDN?')   
-                    print self.item[cata].read()
-
                 
                 if 'YOKOGAWA' in c:
                     cata='POWER_METER'
@@ -71,14 +64,7 @@ class Equip:
                     self.item.update({cata:eq})
                     self.item[cata].write('*IDN?')   
                     print self.item[cata].read()
-            '''
-            if 'ASRL5' in item:
-                eq=rm.open_resource(item)
-                cata='SERIAL'
-                print item+' ->  set '+cata
-                print '\n'
-                self.item.update({cata:eq})
-            '''
+
 
         return self.item
                 
