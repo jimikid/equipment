@@ -4,14 +4,9 @@ Created on 02/26/2016, @author: sbaek
     - initial release
 """
 
-#from data_aq_lib.equipment.file_utils import unique_file
-import os
-import time
+import time, visa
 import pandas as pd
-import data_aq_lib.measurement.measurements as mm   
-#import data_aq_lib.analysis.waveforms_functions as wf
 import data_aq_lib.analysis.waveform_func as wf
-import visa
 from collections import OrderedDict
 results2=OrderedDict()
 
@@ -21,7 +16,7 @@ class scope:
            __STR__
     """    
 
-    def __init__(self, data_path):
+    def __init__(self, data_path=''):
         self.return_str= ''
         self.data_path=data_path
         self.results, self.df = pd.DataFrame(), pd.DataFrame()
@@ -29,31 +24,20 @@ class scope:
         rm = visa.ResourceManager()
         list_equip=rm.list_resources()
         for item in list_equip:
-            print item
             if 'GPIB' in item:   #check equipment by gpib
                 eq=rm.open_resource(item)
                 eq.write('*IDN?')
                 c=eq.read()
-                print c
                 if 'DSO-X' in c:
-                    #cata='SCOPE'
-                    #print item+' ->  set '+cata
-                    #item.update({cata:eq})
-                    #item[cata].write('*IDN?')
-                    #print item[cata].read()
                     self.eq=eq
 
-                #else: print ' scope is not configuable'
-        #self.eq= self.item.eq
-
-    
     def __str__(self):
         self.return_str= '\n\n -- class scope_measurement --' 
         self.return_str += '\n data_path : %s  ' %self.data_path
         return self.return_str       
 
 
-    def initialize(self, trig, ch, reset='Off'):
+    def initialize(self, trig=3, ch=(1,2,3,4), reset='Off'):
         print '\n initizlize scope...'
         # Initialize scope here   
         if reset == 'On':            
@@ -112,13 +96,13 @@ class scope:
         return w    
 
                       
-    def DC2AC_measurement(self, filename, pts_deg, NumPt, TimeDiv, ch_names):
+    def DC2AC_measurement(self, pts_deg, filename='data', NumPt=10000, TimeDiv=None, ch_names=['ch1','ch2', 'ch3', 'ch4']):
         waveforms_list=[]
         ''' collect data'''
         d=[]
         for deg in pts_deg:
             TimeShift=deg/360/60.0
-            results, self.waveforms = self.get_waveforms(filename, deg, NumPt, TimeDiv, TimeShift, ch_names)
+            results, self.waveforms = self.get_waveforms(filename=filename, NumPt=NumPt, ch_names=ch_names, TimeShift=TimeShift, TimeDiv=TimeDiv)
             waveforms_list.append(self.waveforms)
             results.update({'deg':deg, 'NumPt':NumPt, 'TimeDiv':TimeDiv,  'freq':results['freq']})
             d.append(results)     
@@ -131,19 +115,24 @@ class scope:
           
         return waveforms_list
  
-    def get_waveforms(self, filename, deg, NumPt, TimeDiv, TimeShift, ch_names):
-        self.NumPt, self.TimeDiv, self.TimeShift, self.ch_names = NumPt, TimeDiv, TimeShift, ch_names
-        w=[]
+    def get_waveforms(self, filename='data', NumPt=10000, ch_names=['ch1','ch2', 'ch3', 'ch4'], TimeShift=None, TimeDiv=None):
+        self.NumPt, self.ch_names = NumPt, ch_names
+        w, deg=[], 0
 
         results=dict()
         if ch_names==None:
             ch_names=['ch1','ch2','ch3','ch4']
         SCOPE=self.eq
 
-        print '\n---------------------------------------------------------------' 
-        print '--- Deg %s, shift %.1f us'  %(str(deg), TimeShift*1e6)
-        self.set_timebase_delay_factor(TimeShift)
-        self.set_timebase_scale_factor(TimeDiv)
+        if TimeShift:
+            deg=round(TimeShift*360.0*60.0)
+            self.TimeShift=TimeShift
+            print '\n---------------------------------------------------------------'
+            print '--- Deg %s, shift %.1f us'  %(str(deg), TimeShift*1e6)
+            self.set_timebase_delay_factor(TimeShift)
+            if TimeDiv:
+                self.TimeDiv=TimeDiv
+                self.set_timebase_scale_factor(TimeDiv)
            
         time.sleep(1)
         self.set_stop()
@@ -154,12 +143,13 @@ class scope:
         SCOPE.write(':RUN')   
 
         waveforms=[w[0][0],w[0][1],w[1][1],w[2][1],w[3][1]]
-
         data_dict=OrderedDict({'t': waveforms[0]})  #put 't' first to put htat in the first colume to work with wave_func.py
         data_dict.update({ch_names[0]:waveforms[1], ch_names[1]:waveforms[2], ch_names[2]:waveforms[3], ch_names[3]:waveforms[4]})
         df=pd.DataFrame(data_dict)
 
-        file_name=self.data_path+'%s_scope_%s.csv' % (filename, str(deg))
+        file_name=self.data_path+'%s_scope.csv' % (filename)
+        if deg:
+            file_name=self.data_path+'%s_scope_%s.csv' % (filename, str(deg))
         print "\n save as %s" % file_name
         df.to_csv(file_name)
 
