@@ -11,11 +11,6 @@ from collections import OrderedDict
 results2=OrderedDict()
 
 class scope:
-    """
-           __INIT__     
-           __STR__
-    """    
-
     def __init__(self, data_path=''):
         self.return_str= ''
         self.data_path=data_path
@@ -37,10 +32,9 @@ class scope:
         return self.return_str       
 
 
-    def initialize(self, trig=3, ch=(1,2,3,4), reset='Off'):
+    def initialize(self, trig=3, ch=(1,2,3,4), reset=False):
         print '\n initizlize scope...'
-        # Initialize scope here   
-        if reset == 'On':            
+        if reset:
             print ' - reset scope' 
             reset()
             time.sleep(1)
@@ -87,41 +81,42 @@ class scope:
         self.set_offset_all(0) 
         time.sleep(1)
   
-   
-    def get_data(self, chan, NumPt):
-        w=[]        
-        t,v=self.wave(chan, NumPt) # minimum 100
-        w.append(t)
-        w.append(v)
-        return w    
 
-                      
     def DC2AC_measurement(self, pts_deg, filename='data', NumPt=10000, TimeDiv=None, ch_names=['ch1','ch2', 'ch3', 'ch4']):
         waveforms_list=[]
         ''' collect data'''
         d=[]
         for deg in pts_deg:
             TimeShift=deg/360/60.0
-            results, self.waveforms = self.get_waveforms(filename=filename, NumPt=NumPt, ch_names=ch_names, TimeShift=TimeShift, TimeDiv=TimeDiv)
-            waveforms_list.append(self.waveforms)
-            results.update({'deg':deg, 'NumPt':NumPt, 'TimeDiv':TimeDiv,  'freq':results['freq']})
-            d.append(results)     
+            df_wave = self.get_waveforms(NumPt=NumPt, ch_names=ch_names, TimeShift=TimeShift, TimeDiv=TimeDiv)
+            waves=wf.waveforms(df=df_wave,  filepath=self.data_path)
+            rms=waves.get_rms()
+            avg=waves.get_avg()
+            #pkpk=waves.get_pkpk()
+            freq = waves.get_freq(waves.get_zero_crossing(waves.get_labels()[3]))
+            print ' %.1f kHz' %(freq/1000.0)
+            #waves.plot_all()
 
-        df=pd.DataFrame(d)    
-        df=df.set_index([range(len(df))])    #set index. Without this,  index numbers are all 'zero'
-        file_name = self.data_path+'%s_DC2AC_.csv' % filename
+            file_name=self.data_path+'%s_scope_d%.0f.csv' % (filename, deg)
+            print "\n save as %s" % file_name
+            df_wave.to_csv(file_name)
+
+
+            results=OrderedDict({'deg':deg, 'NumPt':NumPt, 'TimeDiv':TimeDiv,  'freq':freq,
+                            ch_names[0]+'_rms':rms[0], ch_names[1]+'_rms':rms[1],ch_names[2]+'_rms':rms[2], ch_names[3]+'_rms':rms[3],
+                            ch_names[0]+'_avg':avg[0] , ch_names[1]+'_avg':avg[1],ch_names[2]+'_avg':avg[2] , ch_names[3]+'_avg':avg[3]
+                            })
+            d.append(results)
+        df_results=pd.DataFrame(d)
+        df_results=df_results.set_index([range(len(df_results))])    #set index. Without this,  index numbers are all 'zero'
+        file_name = self.data_path+'%s_DC2AC.csv' % filename
         print "\n Data will be stored as %s\n" % file_name
-        df.to_csv(file_name)
-          
-        return waveforms_list
- 
-    def get_waveforms(self, filename='data', NumPt=10000, ch_names=['ch1','ch2', 'ch3', 'ch4'], TimeShift=None, TimeDiv=None):
-        self.NumPt, self.ch_names = NumPt, ch_names
-        w, deg=[], 0
+        df_results.to_csv(file_name)
 
-        results=dict()
-        if ch_names==None:
-            ch_names=['ch1','ch2','ch3','ch4']
+        return df_wave, df_results
+
+    def get_waveforms(self, NumPt=10000, ch_names=['ch1','ch2', 'ch3', 'ch4'], TimeShift=None, TimeDiv=None):
+        self.NumPt, self.ch_names = NumPt, ch_names
         SCOPE=self.eq
 
         if TimeShift:
@@ -133,44 +128,19 @@ class scope:
             if TimeDiv:
                 self.TimeDiv=TimeDiv
                 self.set_timebase_scale_factor(TimeDiv)
-           
         time.sleep(1)
         self.set_stop()
     
         print ' - save data with %s pts' %str(NumPt)
+        data_dict=OrderedDict()
         for i in range(4):
-            w.append(self.get_data(i+1, NumPt))
-        SCOPE.write(':RUN')   
-
-        waveforms=[w[0][0],w[0][1],w[1][1],w[2][1],w[3][1]]
-        data_dict=OrderedDict({'t': waveforms[0]})  #put 't' first to put htat in the first colume to work with wave_func.py
-        data_dict.update({ch_names[0]:waveforms[1], ch_names[1]:waveforms[2], ch_names[2]:waveforms[3], ch_names[3]:waveforms[4]})
+            print ' get waveform on %s ' %ch_names[i]
+            t,v=self.wave(i+1, NumPt)
+            data_dict.update({'t': t})
+            data_dict.update({ch_names[i]: v})
+        SCOPE.write(':RUN')
         df=pd.DataFrame(data_dict)
-
-        file_name=self.data_path+'%s_scope.csv' % (filename)
-        if deg:
-            file_name=self.data_path+'%s_scope_%s.csv' % (filename, str(deg))
-        print "\n save as %s" % file_name
-        df.to_csv(file_name)
-
-        waves=wf.waveforms(df=df,  filepath=self.data_path)
-        rms=waves.get_rms()
-        avg=waves.get_avg()
-        pkpk=waves.get_pkpk()
-        zeros= waves.get_zero_crossing(waves.get_labels()[2])
-        freq = waves.get_freq(waves.get_labels()[2], zeros)
-        print ' %.1f kHz' %(freq/1000)
-        waves.plot_all()
-
-        rms_dict={ch_names[0]+'_rms':rms[0], ch_names[1]+'_rms':rms[1],
-                    ch_names[2]+'_rms':rms[2], ch_names[3]+'_rms':rms[3]}
-        avg_cit={ch_names[0]+'_avg':avg[0] , ch_names[1]+'_avg':avg[1],
-                    ch_names[2]+'_avg':avg[2] , ch_names[3]+'_avg':avg[3] }
-
-        results.update(rms_dict)
-        results.update(avg_cit)
-        results.update({'freq':freq})
-        return results, waveforms
+        return df
 
     def reset(self):
         self.eq.write('*RST')
